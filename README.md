@@ -8,10 +8,7 @@ It includes:
 - `gx-compliance`
 - `gx-notary` (registration number notary)
 
-The child applications use ArgoCD multi-source applications:
-
-- Helm chart source: upstream Gaia-X GitLab repositories
-- Values source: this repository
+The child applications use vendored local Helm charts so the deployment stays self-contained and can consume pre-created Kubernetes Secrets for signing material.
 
 ## Repository Layout
 
@@ -32,22 +29,21 @@ platform-apps/
       gx-registry-values.yaml
 ```
 
-## Before You Push
+## Repository URL
 
-Update the placeholder repository URL in these files:
+The manifests currently point to:
+
+```text
+https://github.com/Data-Space-Core/GXDCH-Compliance.git
+```
+
+If your repository URL differs, update:
 
 - `platform-apps/argocd/gxdch-compliance-application.yaml`
+- `platform-apps/gxdch-compliance/appproject.yaml`
 - `platform-apps/gxdch-compliance/gx-registry-application.yaml`
 - `platform-apps/gxdch-compliance/gx-compliance-application.yaml`
 - `platform-apps/gxdch-compliance/gx-notary-application.yaml`
-
-Replace:
-
-```text
-https://github.com/REPLACE_ME/GXDCH-Compliance.git
-```
-
-with your real GitHub repository URL.
 
 ## Before You Sync In ArgoCD
 
@@ -55,19 +51,27 @@ Edit the values files under `platform-apps/gxdch-compliance/values/`:
 
 - replace the placeholder hosts with your real DNS names
 - replace the placeholder TLS secret names if needed
-- replace the placeholder base64-encoded private keys and certificates
 - adjust storage classes if your cluster requires explicit classes
 
 Important:
 
-- `PRIVATE_KEY` and `X509_CERTIFICATE` values must be base64 encoded because the upstream Helm charts inject them into Kubernetes `Secret` resources
-- the default placeholders are intentionally non-working and must be replaced before a real deployment
+- signing keys are now expected from pre-created Kubernetes Secrets referenced through `existingSecret`
+- helper script: `scripts/generate-signing-secret.sh`
+- the helper generates a PKCS#8 RSA key and self-signed certificate, then prints a Secret manifest with all keys required by the three charts
 
 ## Bootstrap
 
 1. Push this folder to GitHub.
 2. Update the placeholder repo URLs.
-3. Apply the root ArgoCD application:
+3. Generate and apply signing secrets:
+
+```bash
+./scripts/generate-signing-secret.sh gx-compliance-signing gxdch-compliance | kubectl apply -f -
+./scripts/generate-signing-secret.sh gx-registry-signing gxdch-compliance | kubectl apply -f -
+./scripts/generate-signing-secret.sh gx-notary-signing gxdch-compliance | kubectl apply -f -
+```
+
+4. Apply the root ArgoCD application:
 
 ```bash
 kubectl apply -n argocd -f platform-apps/argocd/gxdch-compliance-application.yaml
@@ -78,5 +82,4 @@ ArgoCD will then create the `gxdch-compliance` project and sync the three child 
 ## Notes
 
 - `gx-registry` is synced before `gx-compliance` because compliance depends on the registry API.
-- The chart references track the upstream `main` branches by default. Pin them to tags if you want stricter reproducibility.
-- This layout assumes ArgoCD supports multi-source applications.
+- Vendored charts live under `charts/` so you can patch and pin them in Git.

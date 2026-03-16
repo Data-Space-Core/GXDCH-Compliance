@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "gx-registry.fullname" . }}
+  labels:
+    {{- include "gx-registry.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "gx-registry.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        randstring: {{ randAlphaNum 8 | quote }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "gx-registry.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: wait-for-kubo
+          image: busybox
+          command:
+            - sh
+            - -c
+            - until nc -z {{ include "gx-registry.fullname" . }}-kubo 5001; do echo waiting for Kubo; sleep 2; done;
+      containers:
+        - name: {{ include "gx-registry.fullname" . }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: PORT
+              value: "3000"
+            - name: BASE_URI
+              {{- with (first .Values.ingress.hosts) }}
+              value: "https://{{ .host }}{{ (first .paths).path }}"
+              {{- end}}
+            - name: BASE_URL
+              {{- with (first .Values.ingress.hosts) }}
+              value: "https://{{ .host }}{{ (first .paths).path }}"
+              {{- end}}
+            - name: APP_PATH
+              value: "{{ (first (first .Values.ingress.hosts).paths).path }}"
+            - name: evsslonly
+              value: "{{ .Values.evsslonly }}"
+            - name: revocationListURL
+              value: {{.Values.revocationListURL}}
+            - name: trustedIssuersURL
+              value: {{.Values.trustedIssuersURL}}
+            - name: KUBO_HOST
+              value: {{ include "gx-registry.fullname" . }}-kubo
+            - name: APP_BRANCH
+              value: "{{ .Values.APP_BRANCH }}"
+            - name: ONTOLOGY_VERSION
+              value: {{.Values.ontologyVersion | quote}}
+            - name: PRIVATE_KEY_ALGORITHM
+              value: "{{ .Values.PRIVATE_KEY_ALGORITHM }}"
+            - name: ADDITIONAL_DESCRIPTION
+              value: "{{ .Values.ADDITIONAL_DESCRIPTION }}"
+          envFrom:
+            - secretRef:
+                name: {{ .Values.existingSecret | default (printf "%s-keypair" (include "gx-registry.fullname" .)) }}
+          volumeMounts:
+            - name: registry-ipfs-data
+              mountPath: /data/ipfs
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            periodSeconds: 15
+            initialDelaySeconds: 15
+            failureThreshold: 10
+            successThreshold: 1
+            httpGet:
+              path: {{ (first (first .Values.ingress.hosts).paths).path }}
+              port: {{ .Values.service.port }}
+          readinessProbe:
+            periodSeconds: 15
+            initialDelaySeconds: 15
+            failureThreshold: 10
+            successThreshold: 1
+            httpGet:
+              path: {{ (first (first .Values.ingress.hosts).paths).path }}
+              port: {{ .Values.service.port }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: registry-ipfs-data
+      spec:
+        accessModes: [ "{{ .Values.ipfsLocalStorage.accessMode }}" ]
+        resources:
+          requests:
+            storage: "{{ .Values.ipfsLocalStorage.size }}"
+{{- if .Values.ipfsLocalStorage.storageClass }}
+        storageClassName: "{{ .Values.ipfsLocalStorage.storageClass }}"
+{{- end }}

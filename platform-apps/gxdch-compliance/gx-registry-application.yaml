@@ -7,17 +7,14 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   project: gxdch-compliance
-  sources:
-    - repoURL: https://gitlab.com/gaia-x/lab/compliance/gx-registry.git
-      targetRevision: main
-      path: k8s/gx-registry
-      helm:
-        releaseName: main-registry
-        valueFiles:
-          - $values/platform-apps/gxdch-compliance/values/gx-registry-values.yaml
-    - repoURL: https://github.com/Data-Space-Core/GXDCH-Compliance.git
-      targetRevision: main
-      ref: values
+  source:
+    repoURL: https://github.com/Data-Space-Core/GXDCH-Compliance.git
+    targetRevision: main
+    path: charts/gx-registry
+    helm:
+      releaseName: main-registry
+      valueFiles:
+        - ../../platform-apps/gxdch-compliance/values/gx-registry-values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: gxdch-compliance

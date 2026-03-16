@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gx-notary.fullname" . }}
+  labels:
+    {{- include "gx-notary.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "gx-notary.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        randstring: {{ randAlphaNum 8 | quote }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "gx-notary.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: APP_PATH
+              value: "{{ (first (first .Values.ingress.hosts).paths).path }}"
+            - name: BASE_URL
+              {{- with (first .Values.ingress.hosts) }}
+              value: "https://{{ .host }}{{ (first .paths).path }}"
+              {{- end }}
+            - name: VAT_ID_VALIDATION_API
+              value: {{ .Values.urls.vatIdValidationAPI }}
+            - name: LEI_CODE_VALIDATION_API
+              value: {{ .Values.urls.leiCodeValidationApi }}
+            - name: EORI_VALIDATION_API
+              value: {{ .Values.urls.eoriValidationAPI }}
+            - name: OPEN_CORPORATES_VALIDATION_API
+              value: {{ .Values.urls.openCorporatesAPI }}
+            - name: OPEN_CORPORATES_VALIDATION_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.existingSecretOpenCorporatesKeyName }}
+                  name: {{ .Values.existingSecret | default (printf "%s-secrets" (include "gx-notary.fullname" .)) }}
+                  optional: true
+            - name: PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.existingSecretPrivateKeyName }}
+                  name: {{ .Values.existingSecret | default (printf "%s-secrets" (include "gx-notary.fullname" .)) }}
+            - name: PRIVATE_KEY_ALGORITHM
+              value: {{ .Values.PRIVATE_KEY_ALGORITHM }}
+            - name: X509_CERTIFICATE
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.existingSecretCertificateName }}
+                  name: {{ .Values.existingSecret | default (printf "%s-secrets" (include "gx-notary.fullname" .)) }}
+            - name: OFFLINE_CONTEXTS
+              value: "{{ .Values.offlineContexts }}"
+            - name: DEBUG_REQUESTS
+              value: "{{ .Values.debugRequests }}"
+            - name: DEBUG_RESPONSES
+              value: "{{ .Values.debugResponses }}"
+            - name: ADDITIONAL_DESCRIPTION
+              value: "{{ .Values.ADDITIONAL_DESCRIPTION }}"
+          ports:
+            - name: {{ include "gx-notary.fullname" . | trunc 10 | trimSuffix "-"}}-http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ (first (first .Values.ingress.hosts).paths).path }}/
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet:
+              path: {{ (first (first .Values.ingress.hosts).paths).path }}/
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

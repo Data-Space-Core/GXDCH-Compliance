@@ -1,4 +1,5 @@
 nameOverride: main
+existingSecret: gx-registry-signing
 
 image:
   tag: main
@@ -23,8 +24,8 @@ ingress:
 evsslonly: false
 trustedIssuersURL: https://gitlab.com/gaia-x/lab/gxdch/-/raw/main/trusted-gxdch.yaml
 revocationListURL: https://gitlab.com/gaia-x/lab/gxdch/-/raw/main/revoked-issuers.txt
-PRIVATE_KEY: UkVQTEFDRV9NRQ==
-X509_CERTIFICATE: UkVQTEFDRV9NRQ==
+PRIVATE_KEY: ""
+X509_CERTIFICATE: ""
 PRIVATE_KEY_ALGORITHM: PS256
 ontologyVersion: development
 APP_BRANCH: main

@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "gx-registry.fullname" . }}-kubo
+  labels:
+    {{- include "gx-registry.labelsKubo" . | nindent 4 }}
+spec:
+  serviceName: "{{ include "gx-registry.fullname" . }}-kubo"
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gx-registry.selectorLabelsKubo" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gx-registry.selectorLabelsKubo" . | nindent 8 }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: kubo
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "ipfs/kubo:v0.26.0"
+          ports:
+            - containerPort: 4001 # default IPFS swarm port
+            - containerPort: 5001 # default IPFS API port
+            - containerPort: 8080 # default IPFS Gateway port
+          volumeMounts:
+            - name: kubo-working-data
+              mountPath: /data/ipfs
+            - name: ipfs-configure-script
+              mountPath: /usr/local/bin/ipfs-configure-script
+              readOnly: true
+          command: [ "/bin/sh" ]
+          args: [ "-c", "if [ ! -f /data/ipfs/config ]; then ipfs init; fi && sh /usr/local/bin/ipfs-configure-script/configure-ipfs.sh && ipfs daemon" ]
+          resources:
+            requests:
+              memory: "256Mi"
+            limits:
+              memory: "256Mi"
+      volumes:
+        - name: ipfs-configure-script
+          configMap:
+            name: {{ include "gx-registry.fullname" . }}-ipfs-init
+  volumeClaimTemplates:
+    - metadata:
+        name: kubo-working-data
+      spec:
+        accessModes: [ {{ .Values.ipfsLocalStorage.accessMode | quote }} ]
+        resources:
+          requests:
+            storage: "{{ .Values.ipfsLocalStorage.size }}"
+{{- if .Values.ipfsLocalStorage.storageClass }}
+        storageClassName: "{{ .Values.ipfsLocalStorage.storageClass }}"
+{{- end }}

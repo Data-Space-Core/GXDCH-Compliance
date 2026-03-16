@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "gx-notary.fullname" . }}
+  labels:
+    {{- include "gx-notary.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ include "gx-notary.fullname" . | trunc 10 | trimSuffix "-"}}-http
+      protocol: TCP
+      name: {{ include "gx-notary.fullname" . | trunc 10 | trimSuffix "-"}}-http
+  selector:
+    {{- include "gx-notary.selectorLabels" . | nindent 4 }}

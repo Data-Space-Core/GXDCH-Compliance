@@ -1,4 +1,5 @@
 nameOverride: main
+existingSecret: gx-compliance-signing
 
 image:
   tag: main
@@ -23,9 +24,9 @@ ingress:
 urls:
   registry: http://main-registry:3000/main
 
-PRIVATE_KEY: UkVQTEFDRV9NRQ==
+PRIVATE_KEY: ""
 PRIVATE_KEY_ALGORITHM: PS256
-X509_CERTIFICATE: UkVQTEFDRV9NRQ==
+X509_CERTIFICATE: ""
 production: false
 memgraphEnabled: true
 DISABLE_SIGNATURE_CHECK: false

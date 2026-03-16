@@ -1,0 +1,160 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gx-compliance.fullname" . }}
+  labels:
+    {{- include "gx-compliance.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "gx-compliance.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        randstring: {{ randAlphaNum 8 | quote }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "gx-compliance.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: {{ include "gx-compliance.fullname" . | trunc 10 | trimSuffix "-"}}-http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ (first (first .Values.ingress.hosts).paths).path }}
+              port: {{ .Values.service.port }}
+          readinessProbe:
+            httpGet:
+              path: {{ (first (first .Values.ingress.hosts).paths).path }}
+              port: {{ .Values.service.port }}
+          env:
+            {{- if .Values.urls.registry }}
+            - name: REGISTRY_URL
+              value: {{ .Values.urls.registry}}
+            {{- else }}
+            - name: REGISTRY_URL
+              value: http://{{ include "gx-compliance.fullname" . | replace "compliance" "registry"}}:3000{{ (first (first .Values.ingress.hosts).paths).path }}
+            {{- end }}
+            - name: BASE_URL
+              {{- with (first .Values.ingress.hosts) }}
+              value: "https://{{ .host }}{{ (first .paths).path}}"
+              {{- end}}
+            - name: production
+              value: "{{ .Values.production }}"
+            - name: DISABLE_SIGNATURE_CHECK
+              value: "{{ .Values.DISABLE_SIGNATURE_CHECK }}"
+            - name: PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.existingSecretKeyName }}
+                  name: {{ .Values.existingSecret | default (printf "%s-secrets" (include "gx-compliance.fullname" .)) }}
+            - name: PRIVATE_KEY_ALGORITHM
+              value: "{{ .Values.PRIVATE_KEY_ALGORITHM }}"
+            - name: X509_CERTIFICATE
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.existingSecretX509Name }}
+                  name: {{ .Values.existingSecret | default (printf "%s-secrets" (include "gx-compliance.fullname" .)) }}
+            - name: APP_PATH
+              value: "{{ (first (first .Values.ingress.hosts).paths).path }}"
+            - name: TLS
+              value: "true"
+            - name: USE_OFFLINE_DOCUMENT_LOADER
+              value: {{ .Values.USE_OFFLINE_DOCUMENT_LOADER | quote }}
+            - name: ntpServers
+              value: {{ .Values.ntpServers | toJson | quote }}
+            {{- if .Values.dburl }}
+            - name: dburl
+              value: {{ .Values.dburl }}
+            {{- else }}
+            - name: dburl
+              value: bolt://{{ include "gx-compliance.fullname" . | trunc 50 | trimSuffix "-"}}-memgraph:7687
+            {{- end }}
+            - name: ALLOWED_CONTEXT_VERSIONS
+              value: {{ .Values.allowedContextVersions | toJson | quote }}
+            - name: ADDITIONAL_DESCRIPTION
+              value: "{{ .Values.ADDITIONAL_DESCRIPTION }}"
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+{{- if .Values.memgraphEnabled -}}
+# StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Chart.Name | trunc 45 | trimSuffix "-" }}-memgraph
+  labels:
+    {{- include "gx-compliance.labelsMemgraph" . | nindent 4 }}
+spec:
+  serviceName: {{ include "gx-compliance.fullname" . | trunc 50 | trimSuffix "-"}}-memgraph
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "gx-compliance.selectorLabelsMemgraph" . | nindent 6 }}
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        randstring: {{ randAlphaNum 8 | quote }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "gx-compliance.selectorLabelsMemgraph" . | nindent 8 }}
+    spec:
+      volumes:
+        - name: {{ include "gx-compliance.fullname" . | trunc 10 | trimSuffix "-"}}-memgraph-lib-storage
+          persistentVolumeClaim:
+            claimName: {{ include "gx-compliance.fullname" . | trunc 10 | trimSuffix "-"}}-memgraph-lib-storage
+        - name: {{ include "gx-compliance.fullname" . | trunc 10 | trimSuffix "-"}}-memgraph-log-storage
+          persistentVolumeClaim:
+            claimName: {{ include "gx-compliance.fullname" . | trunc 10 | trimSuffix "-"}}-memgraph-log-storage
+      containers:
+        - name: {{ .Chart.Name | trunc 45 | trimSuffix "-" }}-memgraph
+          image: "memgraph/memgraph:3.4.0"
+          args: [ "--also-log-to-stderr=true", "--storage-mode=IN_MEMORY_ANALYTICAL", "--storage-gc-cycle-sec=15", "--storage-snapshot-interval-sec=0", "--storage-wal-enabled=false" ]
+          imagePullPolicy: Always
+          securityContext:
+            runAsUser: 0
+          ports:
+            - name: {{ include "gx-compliance.fullname" . | trunc 5 | trimSuffix "-"}}-memgraph
+              containerPort: 7687
+          volumeMounts:
+            - name: {{ include "gx-compliance.fullname" . | trunc 10 | trimSuffix "-"}}-memgraph-lib-storage
+              mountPath: /var/lib/memgraph
+            - name: {{ include "gx-compliance.fullname" . | trunc 10 | trimSuffix "-"}}-memgraph-log-storage
+              mountPath: /var/log/memgraph
+  {{- end -}}

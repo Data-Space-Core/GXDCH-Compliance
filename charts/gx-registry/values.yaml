@@ -1,0 +1,95 @@
+# Default values for gx-registry.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: registry.gitlab.com/gaia-x/lab/compliance/gx-registry
+  pullPolicy: Always
+  # Default is latest.
+  tag: ""
+
+imagePullSecrets: [ ]
+# Allows to specify source branch and path on which to deploy
+nameOverride: "main"
+fullnameOverride: ""
+
+podAnnotations: { }
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsUser: 1000
+  runAsNonRoot: true
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  className: ""
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  hosts:
+    - host: "registry.lab.gaia-x.eu"
+      paths:
+        - path: /main
+          pathType: Prefix
+  tls:
+    - hosts:
+        - "registry.lab.gaia-x.eu"
+      secretName: registry-server-tls-secret
+
+
+resources: { }
+# We usually recommend not to specify default resources and to leave this as a conscious
+# choice for the user. This also increases chances charts run on environments with little
+# resources, such as Minikube. If you do want to specify resources, uncomment the following
+# lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+# limits:
+#   cpu: 100m
+#   memory: 128Mi
+# requests:
+#   cpu: 100m
+#   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: { }
+
+tolerations: [ ]
+
+affinity: { }
+evsslonly: true
+trustedIssuersURL:
+revocationListURL:
+existingSecret: ""
+existingSecretPrivateKeyName: PRIVATE_KEY
+existingSecretCertificateName: X509_CERTIFICATE
+X509_CERTIFICATE: base64encodedcertificate
+PRIVATE_KEY: base64encodedprivatekey
+PRIVATE_KEY_ALGORITHM: PS256
+ontologyVersion: development
+APP_BRANCH: main
+
+persistence:
+  size: 8Gi
+  storageClass:
+  accessMode: ReadWriteOnce
+
+ipfsLocalStorage:
+  size: 1Gi
+  storageClass:
+  accessMode: ReadWriteOnce
+
+ADDITIONAL_DESCRIPTION: 

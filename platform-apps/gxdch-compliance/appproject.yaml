@@ -7,9 +7,6 @@ spec:
   description: Gaia-X GXDCH compliance stack
   sourceRepos:
     - https://github.com/Data-Space-Core/GXDCH-Compliance.git
-    - https://gitlab.com/gaia-x/lab/compliance/gx-registry.git
-    - https://gitlab.com/gaia-x/lab/compliance/gx-compliance.git
-    - https://gitlab.com/gaia-x/lab/compliance/gaia-x-notary-registrationnumber.git
   destinations:
     - namespace: gxdch-compliance
       server: https://kubernetes.default.svc

@@ -1,4 +1,5 @@
 nameOverride: main
+existingSecret: gx-notary-signing
 
 image:
   tag: main
@@ -20,9 +21,9 @@ ingress:
         - registrationnumber.notary.example.com
       secretName: registrationnumber-notary-example-com-tls
 
-PRIVATE_KEY: UkVQTEFDRV9NRQ==
+PRIVATE_KEY: ""
 PRIVATE_KEY_ALGORITHM: PS256
-X509_CERTIFICATE: UkVQTEFDRV9NRQ==
+X509_CERTIFICATE: ""
 openCorporatesAPIKey: ""
 offlineContexts: "true"
 debugRequests: "false"
