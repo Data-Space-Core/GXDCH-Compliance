@@ -1,0 +1,36 @@
+nameOverride: main
+
+image:
+  tag: main
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  hosts:
+    - host: registry.example.com
+      paths:
+        - path: /main
+          pathType: Prefix
+  tls:
+    - hosts:
+        - registry.example.com
+      secretName: registry-example-com-tls
+
+evsslonly: false
+trustedIssuersURL: https://gitlab.com/gaia-x/lab/gxdch/-/raw/main/trusted-gxdch.yaml
+revocationListURL: https://gitlab.com/gaia-x/lab/gxdch/-/raw/main/revoked-issuers.txt
+PRIVATE_KEY: UkVQTEFDRV9NRQ==
+X509_CERTIFICATE: UkVQTEFDRV9NRQ==
+PRIVATE_KEY_ALGORITHM: PS256
+ontologyVersion: development
+APP_BRANCH: main
+
+ipfsLocalStorage:
+  size: 1Gi
+  accessMode: ReadWriteOnce
+
+ADDITIONAL_DESCRIPTION: ""

@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gx-compliance
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: gxdch-compliance
+  sources:
+    - repoURL: https://gitlab.com/gaia-x/lab/compliance/gx-compliance.git
+      targetRevision: main
+      path: k8s/gx-compliance
+      helm:
+        releaseName: main-compliance
+        valueFiles:
+          - $values/platform-apps/gxdch-compliance/values/gx-compliance-values.yaml
+    - repoURL: https://github.com/REPLACE_ME/GXDCH-Compliance.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gxdch-compliance
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

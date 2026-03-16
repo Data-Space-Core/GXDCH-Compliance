@@ -1,0 +1,50 @@
+nameOverride: main
+
+image:
+  tag: main
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  hosts:
+    - host: compliance.example.com
+      paths:
+        - path: /main
+          pathType: Prefix
+  tls:
+    - hosts:
+        - compliance.example.com
+      secretName: compliance-example-com-tls
+
+urls:
+  registry: http://main-registry:3000/main
+
+PRIVATE_KEY: UkVQTEFDRV9NRQ==
+PRIVATE_KEY_ALGORITHM: PS256
+X509_CERTIFICATE: UkVQTEFDRV9NRQ==
+production: false
+memgraphEnabled: true
+DISABLE_SIGNATURE_CHECK: false
+USE_OFFLINE_DOCUMENT_LOADER: true
+
+ntpServers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+  - 2.pool.ntp.org
+  - 3.pool.ntp.org
+
+allowedContextVersions:
+  - development
+  - main
+  - v1
+  - v2
+  - "2406"
+  - "2411"
+  - "2503"
+  - "2511"
+
+ADDITIONAL_DESCRIPTION: ""

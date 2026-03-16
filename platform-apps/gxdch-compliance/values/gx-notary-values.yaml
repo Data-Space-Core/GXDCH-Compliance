@@ -1,0 +1,37 @@
+nameOverride: main
+
+image:
+  tag: main
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  hosts:
+    - host: registrationnumber.notary.example.com
+      paths:
+        - path: /main
+          pathType: Prefix
+  tls:
+    - hosts:
+        - registrationnumber.notary.example.com
+      secretName: registrationnumber-notary-example-com-tls
+
+PRIVATE_KEY: UkVQTEFDRV9NRQ==
+PRIVATE_KEY_ALGORITHM: PS256
+X509_CERTIFICATE: UkVQTEFDRV9NRQ==
+openCorporatesAPIKey: ""
+offlineContexts: "true"
+debugRequests: "false"
+debugResponses: "false"
+
+urls:
+  eoriValidationAPI: https://ec.europa.eu/taxation_customs/dds2/eos/validation/services/validation
+  leiCodeValidationApi: https://api.gleif.org/api/v1/lei-records/
+  vatIdValidationAPI: http://ec.europa.eu/taxation_customs/vies/services/checkVatService
+  openCorporatesAPI: https://api.opencorporates.com/v0.4/companies/search
+
+ADDITIONAL_DESCRIPTION: ""
