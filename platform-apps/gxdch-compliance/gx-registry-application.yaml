@@ -15,7 +15,7 @@ spec:
         releaseName: main-registry
         valueFiles:
           - $values/platform-apps/gxdch-compliance/values/gx-registry-values.yaml
-    - repoURL: https://github.com/REPLACE_ME/GXDCH-Compliance.git
+    - repoURL: https://github.com/Data-Space-Core/GXDCH-Compliance.git
       targetRevision: main
       ref: values
   destination:
